@@ -1,0 +1,49 @@
+﻿@page "/bookDelete/{id:int}"
+@inject IBookService BookService
+@inject NavigationManager NavigationManager
+
+<h1>BookDelete</h1>
+<p style="color:red">Esta seguro de que queire eliminar este libro?</p>
+<EditForm Model="@book">
+    <table class="table">
+        <tr>
+            <td>Title:</td>
+            <td><InputText class="form-control col-sm-4" @bind-Value="book.Title" disabled readonly /></td>
+        </tr>
+        <tr>
+            <td>Author:</td>
+            <td><InputText class="form-control col-sm-4" @bind-Value="book.Author" disabled readonly /></td>
+        </tr>
+        <tr>
+            <td colspan="2" style="text-align:center">
+                <input type="submit" value="Eliminar" @onclick="DeleteBook" />
+                <input type="button" value="Cancelar" @onclick="Cancel" />
+            </td>
+        </tr>
+    </table>
+
+</EditForm>
+@code {
+    [Parameter]
+    public int id { get; set; }
+
+    private Book book = new Book();
+
+    protected override async Task OnInitializedAsync()
+    {
+        book = await BookService.GetBookDetails(id);
+    }
+
+    protected async Task DeleteBook()
+    {
+        await BookService.DeleteBook(id);
+        // redirect to books list after saving
+        NavigationManager.NavigateTo("/");
+    }
+
+    protected void Cancel()
+    {
+        // redirect to books list without saving
+        NavigationManager.NavigateTo("/");
+    }
+}

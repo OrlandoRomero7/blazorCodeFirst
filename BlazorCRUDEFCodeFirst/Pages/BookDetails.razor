@@ -1,0 +1,137 @@
+﻿@page "/bookDetails"
+@page "/bookDetails/{id:int}"
+@inject IBookService BookService
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment env
+@using Microsoft.AspNetCore.Components.Forms
+@using System.IO
+
+
+<h1>BookDetails</h1>
+<EditForm Model="@book" OnValidSubmit="SaveBook">
+    <DataAnnotationsValidator />
+
+    
+    <table class="table">
+        <tr>
+            <td>Title:</td>
+            <td><InputText class="form-control col-sm-4" @bind-Value="book.Title" />
+                <ValidationMessage For="@(() => book.Title)" />
+            </td>
+        </tr>
+        <tr>
+            <td>Author:</td>
+            <td><InputText class="form-control col-sm-4" @bind-Value="book.Author" />
+                <ValidationMessage For="()=>book.Author"></ValidationMessage>
+            </td>
+        </tr>
+        <tr>
+            <td>Paginas:</td>
+            <td>
+                <InputNumber class="form-control col-sm-4" @bind-Value="book.Pages" />
+                <ValidationMessage For="()=>book.Pages"></ValidationMessage>
+            </td>
+        </tr>
+        <tr>
+            <td>Editorial:</td>
+            <td>
+                <InputText class="form-control col-sm-4" @bind-Value="book.Editorial" />
+                <ValidationMessage For="()=>book.Editorial"></ValidationMessage>
+            </td>
+        </tr>
+        <tr>
+            <td>Precio:</td>
+            <td>
+                <InputNumber class="form-control col-sm-4" @bind-Value="book.Price" />
+                <ValidationMessage For="()=>book.Price"></ValidationMessage>
+            </td>
+        </tr>
+        <td>Imagen:</td>
+        <td>
+            @if (!string.IsNullOrEmpty(book.ImagePath))
+            {
+                <div>
+                    <img src="@book.ImagePath" alt="Imagen actual del libro" style="width: 100px;" />
+                </div>
+            }
+            <div>
+                <InputFile class="form-control col-sm-4" OnChange="@OnInputFileChange" />
+                @if (string.IsNullOrEmpty(book.ImagePath))
+                {
+                    <ValidationMessage For="()=>book.ImagePath"></ValidationMessage>
+                }
+            </div>
+        </td>
+        
+    </table>
+    <div style="display: flex; justify-content: center;">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+    </div>
+
+</EditForm>
+@code {
+    [Parameter]
+    public int id { get; set; }
+
+    private Book book = new Book();
+    private IBrowserFile selectedFile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (id != 0)
+        {
+            book = await BookService.GetBookDetails(id);
+        }
+    }
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    protected async Task SaveBook()
+    {
+        int bookId = await BookService.SaveBook(book);
+
+        if (bookId > 0)
+        {
+            book = await BookService.GetBookDetails(bookId);
+
+            if (selectedFile != null)
+            {
+                string imagesPath = Path.Combine(env.WebRootPath, "images");
+                if (!Directory.Exists(imagesPath))
+                {
+                    Directory.CreateDirectory(imagesPath);
+                }
+
+                var path = Path.Combine(imagesPath, $"{book.BookId}.jpg");
+                using var imageStream = selectedFile.OpenReadStream();
+                using var fileStream = File.OpenWrite(path);
+                await imageStream.CopyToAsync(fileStream);
+
+                book.ImagePath = $"images/{book.BookId}.jpg";
+                await BookService.UpdateBook(book);
+
+                // Aquí forzamos a Blazor a realizar un nuevo renderizado del componente
+                StateHasChanged();
+                // Forzar un recargado completo de la página
+                //NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+            }
+
+            NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            // Maneja el caso en el que el libro no pudo ser guardado
+        }
+    }
+    protected void Cancel()
+    {
+        // redirect to books list without saving
+        NavigationManager.NavigateTo("/");
+    }
+    
+
+    
+
+}
